@@ -1,18 +1,16 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { userStore } from '$lib/stores/user.svelte';
+	import { goto } from '$app/navigation';
 
-	let { data } = $props();
-
-	// Additional protection in the component
 	$effect(() => {
 		if (browser && !userStore.isLoading() && !userStore.getUser()) {
-			window.location.href = '/login';
+			goto('/login');
 		}
 	});
 </script>
 
-{#if data.loading}
+{#if userStore.isLoading()}
 	<div class="flex min-h-[60vh] items-center justify-center">
 		<div class="space-y-4 text-center">
 			<span class="loading loading-dots loading-lg text-neon-cyan"></span>
@@ -26,7 +24,7 @@
 				SECURE_CHAT
 			</h1>
 			<p class="text-neon-cyan/80 mt-4 font-mono">
-				Connected as: {data.user?.email}
+				Connected as: {userStore.getUser()?.email}
 				<br />
 				<em class="text-neon-cyan/80 text-xs">Do not worry your email is private 🤐</em>
 			</p>
