@@ -1,17 +1,27 @@
 <div class="p-4 md:p-8 lg:p-12">
 	<!-- Hero Section -->
-	<div class="mx-auto max-w-6xl space-y-16">
-		<div class="space-y-8 text-center">
+	<div class="mx-auto max-w-6xl space-y-8">
+		<div class="flex w-full flex-col items-center space-y-8 text-center">
 			<h1
 				class="glitch text-neon-green text-5xl font-bold tracking-wider md:text-7xl"
-				data-text="RANDOM∆CONNECT"
+				data-text="KAWAI∆KIWI"
 			>
-				RANDOM∆CONNECT
+				KAWAI∆KIWI
 			</h1>
 
-			<p class="text-neon-cyan/80 animate-pulse font-mono text-xl md:text-2xl">
+			<p class="text-neon-cyan/80 animate-pulse font-mono text-lg md:text-2xl">
 				Strangers await. Curiosity rewarded.
 			</p>
+		</div>
+
+		<!-- CTA Section -->
+		<div class="pb-8 text-center">
+			<a
+				href="/login"
+				class="btn btn-lg bg-neon-cyan/20 border-neon-cyan hover:bg-neon-pink/20 hover:border-neon-pink text-neon-cyan hover:text-neon-pink hover-glow animate-float border-2 px-12 py-4 font-mono text-xl"
+			>
+				START CHAT [↗]
+			</a>
 		</div>
 
 		<!-- Feature Grid -->
@@ -47,16 +57,6 @@
 					</p>
 				</div>
 			</div>
-		</div>
-
-		<!-- CTA Section -->
-		<div class="pt-8 text-center">
-			<a
-				href="/login"
-				class="btn btn-lg bg-neon-cyan/20 border-neon-cyan hover:bg-neon-pink/20 hover:border-neon-pink text-neon-cyan hover:text-neon-pink hover-glow animate-float border-2 px-12 py-4 font-mono text-xl"
-			>
-				START CHAT [↗]
-			</a>
 		</div>
 	</div>
 

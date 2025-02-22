@@ -7,17 +7,17 @@
 	import { goto } from '$app/navigation';
 </script>
 
-<div class="crt min-h-screen p-4 md:p-8 lg:p-12">
+<div class="crt min-h-screen max-w-screen p-2 md:p-8 lg:p-12">
 	<!-- Navbar -->
 	<nav
-		class="navbar bg-base-100/10 rounded-box border-neon-pink/30 fixed top-4 right-4 left-4 z-50 mb-12 border-2 px-4 backdrop-blur-lg"
+		class="navbar bg-base-100/10 rounded-box border-neon-pink/30 top-2 right-2 left-2 z-50 border-2 bg-black/40 px-2 md:fixed md:top-4 md:right-4 md:left-4"
 	>
 		<div class="flex-1">
 			<a
 				href="/"
-				class="btn btn-ghost text-neon-pink hover:text-neon-cyan hover-glow font-mono text-2xl"
+				class="btn btn-ghost text-neon-pink hover:text-neon-cyan hover-glow font-mono text-xl md:text-2xl"
 			>
-				VID<span class="text-neon-green">CHAT</span>∆
+				KAWAI<span class="text-neon-green">KIWI</span>∆
 			</a>
 		</div>
 		<div class="flex-none">
@@ -54,7 +54,7 @@
 	</nav>
 
 	<!-- Main Content Area -->
-	<main class="pt-24">
+	<main class="pt-4 md:pt-16">
 		{@render children()}
 	</main>
 
