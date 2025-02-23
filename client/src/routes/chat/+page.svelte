@@ -18,11 +18,11 @@
 
 	let pendingIceCandidates = $state<RTCIceCandidate[]>([]);
 
-	// $effect(() => {
-	// 	if (browser && !userStore.isLoading() && !userStore.getUser()) {
-	// 		goto('/login');
-	// 	}
-	// });
+	$effect(() => {
+		if (browser && !userStore.isLoading() && !userStore.getUser()) {
+			goto('/login');
+		}
+	});
 
 	// Common handler functions
 	const handleTrack = async (event: RTCTrackEvent) => {
