@@ -100,6 +100,6 @@ instrument(io, {
   mode: "development",
 });
 
-httpServer.listen(8080, () => {
-  console.log("Server is running on port 8080");
+httpServer.listen(8080, "0.0.0.0", () => {
+  console.log("Server is running on 0.0.0.0:8080");
 });

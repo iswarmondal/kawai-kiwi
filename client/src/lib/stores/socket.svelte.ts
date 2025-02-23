@@ -1,7 +1,8 @@
 import { io, Socket } from 'socket.io-client';
+import { PUBLIC_SOCKET_SERVER_URL } from '$env/static/public';
 
 class SocketStore {
-	private socket = $state<Socket>(io('http://192.168.1.2:8080'));
+	private socket = $state<Socket>(io(PUBLIC_SOCKET_SERVER_URL));
 
 	getSocket() {
 		return this.socket;
@@ -9,7 +10,10 @@ class SocketStore {
 
 	connect() {
 		this.disconnect();
-		this.socket = io('http://192.168.1.2:8080');
+		if (!PUBLIC_SOCKET_SERVER_URL || PUBLIC_SOCKET_SERVER_URL === null) {
+			throw Error('Socket server url not found in env');
+		}
+		this.socket = io(PUBLIC_SOCKET_SERVER_URL);
 	}
 
 	disconnect() {
