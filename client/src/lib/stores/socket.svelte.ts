@@ -1,7 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 
 class SocketStore {
-	private socket = $state<Socket>(io('http://localhost:8080'));
+	private socket = $state<Socket>(io('http://192.168.1.2:8080'));
 
 	getSocket() {
 		return this.socket;
@@ -9,7 +9,7 @@ class SocketStore {
 
 	connect() {
 		this.disconnect();
-		this.socket = io('http://localhost:8080');
+		this.socket = io('http://192.168.1.2:8080');
 	}
 
 	disconnect() {

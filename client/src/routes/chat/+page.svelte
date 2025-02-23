@@ -16,16 +16,88 @@
 
 	let findingPeerTimeout = $state<NodeJS.Timeout | null>(null);
 
+	let pendingIceCandidates = $state<RTCIceCandidate[]>([]);
+
 	// $effect(() => {
 	// 	if (browser && !userStore.isLoading() && !userStore.getUser()) {
 	// 		goto('/login');
 	// 	}
 	// });
 
+	// Common handler functions
+	const handleTrack = async (event: RTCTrackEvent) => {
+		console.log('Track received', event);
+		if (event && event.streams[0]) {
+			console.log('Stream received', event.streams[0]);
+			remoteStream = event.streams[0];
+			if (remoteVideo) {
+				console.log('Setting remote video source', remoteVideo);
+				remoteVideo.srcObject = remoteStream;
+
+				try {
+					// wait for the remote video to be ready
+					await new Promise((resolve) => {
+						remoteVideo!.addEventListener('loadedmetadata', resolve, { once: true });
+					});
+
+					remoteVideo.play().catch((error) => {
+						console.error('Error playing remote video', error);
+					});
+				} catch (error) {
+					console.error('Error playing remote video', error);
+
+					setTimeout(async () => {
+						try {
+							await remoteVideo?.play();
+						} catch (retryError) {
+							console.error('Retry failed: ', retryError);
+						}
+					}, 1000);
+				}
+			}
+		}
+	};
+
+	const handleIceCandidate = (event: RTCPeerConnectionIceEvent) => {
+		if (event.candidate) {
+			console.log('sending ice candidate', event.candidate);
+			socketStore.sendIceCandidate(event.candidate);
+		}
+	};
+
+	const handleDisconnect = () => {
+		console.log('Peer disconnected, looking for new peer...');
+		remoteStream = null;
+		if (remoteVideo) {
+			remoteVideo.srcObject = null;
+		}
+
+		// Close existing peer connection
+		if (peerConnection) {
+			peerConnection.close();
+			peerConnection = null;
+		}
+
+		// Start looking for a new peer
+		socketStore.findPeer();
+	};
+
 	socket.on('peer:accepted', () => {
 		if (findingPeerTimeout) {
 			clearTimeout(findingPeerTimeout);
 		}
+
+		if (!localStream) {
+			alert('Error: No local stream found');
+			return;
+		}
+
+		peerConnection = rtcConfig.setupPeerConnection(
+			localStream,
+			handleTrack,
+			handleIceCandidate,
+			handleDisconnect
+		);
 	});
 
 	socket.on('peer:found', async () => {
@@ -38,9 +110,12 @@
 			return;
 		}
 
-		peerConnection = rtcConfig.getPeerConnection();
-
-		peerConnection.addTrack(localStream.getTracks()[0], localStream);
+		peerConnection = rtcConfig.setupPeerConnection(
+			localStream,
+			handleTrack,
+			handleIceCandidate,
+			handleDisconnect
+		);
 
 		const offer = await rtcConfig.createOffer();
 		socketStore.sendConnectionOffer(offer);
@@ -51,8 +126,14 @@
 			throw new Error('Error: No peer connection found');
 		}
 		if (candidate.candidate) {
-			console.log('adding ice candidate', candidate);
-			rtcConfig.getPeerConnection().addIceCandidate(new RTCIceCandidate(candidate));
+			const iceCandidate = new RTCIceCandidate(candidate);
+			if (rtcConfig.getPeerConnection().remoteDescription) {
+				console.log('adding ice candidate', candidate);
+				rtcConfig.getPeerConnection().addIceCandidate(iceCandidate);
+			} else {
+				console.log('queuing ice candidate', candidate);
+				pendingIceCandidates.push(iceCandidate);
+			}
 		}
 	});
 
@@ -66,9 +147,25 @@
 		if (!rtcConfig.getPeerConnection()) {
 			throw new Error('Error: No peer connection found');
 		}
+
+		try {
+			await rtcConfig.getPeerConnection().setRemoteDescription(new RTCSessionDescription(answer));
+
+			// Add any pending ICE candidates
+			for (const candidate of pendingIceCandidates) {
+				await rtcConfig.getPeerConnection().addIceCandidate(candidate);
+			}
+			pendingIceCandidates = [];
+		} catch (error) {
+			console.error('Error setting remote description:', error);
+		}
 	});
 
 	socket.on('peer:alone', () => {
+		if (findingPeerTimeout) {
+			clearTimeout(findingPeerTimeout);
+		}
+
 		findingPeerTimeout = setTimeout(() => {
 			socketStore.findPeer();
 		}, 7000);
@@ -87,25 +184,11 @@
 		}
 	};
 
-	rtcConfig.getPeerConnection().onicecandidate = (event) => {
-		if (event.candidate) {
-			console.log('sending ice candidate', event.candidate);
-			socketStore.sendIceCandidate(event.candidate);
-		}
-	};
-
-	rtcConfig.getPeerConnection().ontrack = (event) => {
-		if (event.streams[0]) {
-			console.log('ontrack', event);
-			remoteStream = event.streams[0];
-			if (remoteStream) {
-				console.log('remoteVideo', remoteVideo);
-				// remoteVideo.srcObject = remoteStream;
-			}
-		}
-	};
-
 	const handleVideoChatStop = () => {
+		if (findingPeerTimeout) {
+			clearTimeout(findingPeerTimeout);
+		}
+
 		if (localStream) {
 			localStream.getTracks().forEach((track) => track.stop());
 			localStream = null;
@@ -113,6 +196,31 @@
 				localVideo.srcObject = null;
 			}
 		}
+
+		if (peerConnection) {
+			peerConnection.close();
+			peerConnection = null;
+		}
+	};
+
+	const handleChangePeer = () => {
+		console.log('Changing peer...');
+		remoteStream = null;
+		if (remoteVideo) {
+			remoteVideo.srcObject = null;
+		}
+
+		// Close existing peer connection
+		if (peerConnection) {
+			peerConnection.close();
+			peerConnection = null;
+		}
+
+		if (findingPeerTimeout) {
+			clearTimeout(findingPeerTimeout);
+		}
+		// Start looking for a new peer
+		socketStore.findPeer();
 	};
 </script>
 
@@ -144,33 +252,38 @@
 				class="flex h-[65vh] w-full flex-col items-center justify-center gap-4 md:flex-row"
 				class:hidden={!localStream}
 			>
-				<video
-					id="remoteVideo"
-					bind:this={remoteVideo}
-					autoplay
-					playsinline
-					class="rounded-xl transition-all duration-300 {remoteStream !== null
-						? 'h-[300px] w-[400px] md:h-[500px] md:w-[600px]'
-						: 'h-0 w-0'}"
-				>
-					<track kind="captions" label="Video Chat Captions" src="" default />
-				</video>
+				<div class="relative h-[300px] w-full md:h-[400px] md:w-1/2">
+					<video
+						id="remoteVideo"
+						bind:this={remoteVideo}
+						autoplay
+						playsInline
+						class="border-neon-cyan h-full w-full rounded-xl border-2 transition-all duration-300"
+					>
+						<track kind="captions" />
+					</video>
+					{#if !remoteStream}
+						<div class="absolute inset-0 flex items-center justify-center">
+							<div class="text-center">
+								<span class="loading loading-dots loading-lg text-neon-cyan"></span>
+								<p class="text-neon-cyan/80 mt-2 animate-pulse font-mono">Waiting for peer...</p>
+							</div>
+						</div>
+					{/if}
+				</div>
 				<video
 					id="localVideo"
 					bind:this={localVideo}
 					autoplay
 					playsinline
 					muted
-					class="border-neon-cyan rounded-xl border-2 bg-cover bg-center transition-all duration-300 {remoteStream !==
-					null
-						? 'h-0 w-0'
-						: 'h-[100px] w-[300px] md:h-[300px] md:w-[500px]'}"
+					class="border-neon-cyan h-[300px] w-full rounded-xl border-2 bg-cover bg-center transition-all duration-300 md:h-[400px] md:w-1/2"
 				>
 					<track kind="captions" label="Video Chat Captions" src="" default />
 				</video>
 			</div>
 
-			<div class="mt-8 flex justify-center">
+			<div class="mt-8 flex justify-center gap-4">
 				<button
 					class="btn btn-lg bg-neon-cyan/20 border-neon-cyan hover:bg-neon-pink/20 hover:border-neon-pink text-neon-cyan hover:text-neon-pink hover-glow border-2 px-8 py-2 font-mono text-xl md:px-12 md:py-4"
 					onclick={() => {
@@ -196,13 +309,40 @@
 								d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
 							/>
 						</svg>
-						{#if localStream}
-							STOP_VIDEO_CHAT [⏸]
-						{:else}
+						{#if !localStream}
 							START_VIDEO_CHAT [▶]
+						{:else if remoteStream}
+							END_VIDEO_CHAT [⏹]
+						{:else}
+							CANCEL_SEARCH [⏹]
 						{/if}
 					</div>
 				</button>
+
+				{#if localStream && remoteStream}
+					<button
+						class="btn btn-lg bg-neon-cyan/20 border-neon-cyan hover:bg-neon-pink/20 hover:border-neon-pink text-neon-cyan hover:text-neon-pink hover-glow border-2 px-8 py-2 font-mono text-xl md:px-12 md:py-4"
+						onclick={handleChangePeer}
+					>
+						<div class="flex items-center gap-2">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="h-5 w-5"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+								/>
+							</svg>
+							CHANGE_PEER [⟳]
+						</div>
+					</button>
+				{/if}
 			</div>
 		</div>
 	</div>
