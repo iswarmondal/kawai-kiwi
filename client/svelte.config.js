@@ -9,7 +9,6 @@ const config = {
 	compilerOptions: {
 		runes: true
 	},
-
 	kit: {
 		adapter: adapter()
 	}

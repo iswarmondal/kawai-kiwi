@@ -3,6 +3,7 @@
 	import { userStore } from '$lib/stores/user.svelte';
 	import { goto } from '$app/navigation';
 	import { socketStore } from '$lib/stores/socket.svelte';
+	import { rtcConfig } from '$lib/stores/RTC.config.svelte';
 
 	const socket = socketStore.getSocket();
 	let localStream = $state<MediaStream | null>(null);
@@ -11,29 +12,99 @@
 	let remoteStream = $state<MediaStream | null>(null);
 	let remoteVideo = $state<HTMLVideoElement | null>(null);
 
-	$effect(() => {
-		if (browser && !userStore.isLoading() && !userStore.getUser()) {
-			goto('/login');
+	let peerConnection = $state<RTCPeerConnection | null>(null);
+
+	let findingPeerTimeout = $state<NodeJS.Timeout | null>(null);
+
+	// $effect(() => {
+	// 	if (browser && !userStore.isLoading() && !userStore.getUser()) {
+	// 		goto('/login');
+	// 	}
+	// });
+
+	socket.on('peer:accepted', () => {
+		if (findingPeerTimeout) {
+			clearTimeout(findingPeerTimeout);
 		}
 	});
 
-	socket.on('connect', () => {
-		console.log('Connected to server');
+	socket.on('peer:found', async () => {
+		if (findingPeerTimeout) {
+			clearTimeout(findingPeerTimeout);
+		}
+
+		if (!localStream) {
+			alert('Error: No local stream found');
+			return;
+		}
+
+		peerConnection = rtcConfig.getPeerConnection();
+
+		peerConnection.addTrack(localStream.getTracks()[0], localStream);
+
+		const offer = await rtcConfig.createOffer();
+		socketStore.sendConnectionOffer(offer);
+	});
+
+	socket.on('peer:sent:icecandidate', (candidate) => {
+		if (!rtcConfig.getPeerConnection()) {
+			throw new Error('Error: No peer connection found');
+		}
+		if (candidate.candidate) {
+			console.log('adding ice candidate', candidate);
+			rtcConfig.getPeerConnection().addIceCandidate(new RTCIceCandidate(candidate));
+		}
+	});
+
+	socket.on('peer:call', async (offer) => {
+		await rtcConfig.answerOffer(offer);
+		const answer = await rtcConfig.createAnswer();
+		socketStore.sendConnectionAnswer(answer);
+	});
+
+	socket.on('peer:answer', async (answer) => {
+		if (!rtcConfig.getPeerConnection()) {
+			throw new Error('Error: No peer connection found');
+		}
+	});
+
+	socket.on('peer:alone', () => {
+		findingPeerTimeout = setTimeout(() => {
+			socketStore.findPeer();
+		}, 7000);
 	});
 
 	const handleVideoChatStart = async () => {
 		try {
-			console.log('Video chat');
 			localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
 			if (localVideo) {
 				localVideo.srcObject = localStream;
-				console.log('local stream assigned');
 			}
+			socketStore.findPeer();
 		} catch (error) {
 			console.error('Error getting user media:', error);
 			alert('Error getting user media, please try again');
 		}
 	};
+
+	rtcConfig.getPeerConnection().onicecandidate = (event) => {
+		if (event.candidate) {
+			console.log('sending ice candidate', event.candidate);
+			socketStore.sendIceCandidate(event.candidate);
+		}
+	};
+
+	rtcConfig.getPeerConnection().ontrack = (event) => {
+		if (event.streams[0]) {
+			console.log('ontrack', event);
+			remoteStream = event.streams[0];
+			if (remoteStream) {
+				console.log('remoteVideo', remoteVideo);
+				// remoteVideo.srcObject = remoteStream;
+			}
+		}
+	};
+
 	const handleVideoChatStop = () => {
 		if (localStream) {
 			localStream.getTracks().forEach((track) => track.stop());
@@ -73,28 +144,30 @@
 				class="flex h-[65vh] w-full flex-col items-center justify-center gap-4 md:flex-row"
 				class:hidden={!localStream}
 			>
-				{#if remoteStream}
-					<video
-						id="remoteVideo"
-						bind:this={remoteVideo}
-						autoplay
-						playsinline
-						class="h-[300px] w-[400px] rounded-xl md:w-full"
-					>
-						<track kind="captions" label="Video Chat Captions" src="" default />
-					</video>
-				{:else}
-					<video
-						id="localVideo"
-						bind:this={localVideo}
-						autoplay
-						playsinline
-						muted
-						class="border-neon-cyan h-[100px] w-[300px] rounded-xl border-2 bg-cover bg-center md:h-full md:w-full"
-					>
-						<track kind="captions" label="Video Chat Captions" src="" default />
-					</video>
-				{/if}
+				<video
+					id="remoteVideo"
+					bind:this={remoteVideo}
+					autoplay
+					playsinline
+					class="rounded-xl transition-all duration-300 {remoteStream !== null
+						? 'h-[300px] w-[400px] md:h-[500px] md:w-[600px]'
+						: 'h-0 w-0'}"
+				>
+					<track kind="captions" label="Video Chat Captions" src="" default />
+				</video>
+				<video
+					id="localVideo"
+					bind:this={localVideo}
+					autoplay
+					playsinline
+					muted
+					class="border-neon-cyan rounded-xl border-2 bg-cover bg-center transition-all duration-300 {remoteStream !==
+					null
+						? 'h-0 w-0'
+						: 'h-[100px] w-[300px] md:h-[300px] md:w-[500px]'}"
+				>
+					<track kind="captions" label="Video Chat Captions" src="" default />
+				</video>
 			</div>
 
 			<div class="mt-8 flex justify-center">

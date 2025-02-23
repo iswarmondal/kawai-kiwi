@@ -8,15 +8,33 @@ class SocketStore {
 	}
 
 	connect() {
-		this.socket.connect();
+		this.disconnect();
+		this.socket = io('http://localhost:8080');
 	}
 
 	disconnect() {
 		this.socket.disconnect();
 	}
 
-	sendMessage(message: string, data: any) {
+	findPeer() {
+		console.log('finding peer');
+		this.socket.emit('peer:find');
+	}
+
+	sendMessage(message: string, data: RTCSessionDescriptionInit | RTCIceCandidateInit) {
 		this.socket.emit('message', message, data);
+	}
+
+	sendConnectionOffer(offer: RTCSessionDescriptionInit) {
+		this.socket.emit('peer:offer', offer);
+	}
+
+	sendConnectionAnswer(answer: RTCSessionDescriptionInit) {
+		this.socket.emit('peer:answer', answer);
+	}
+
+	sendIceCandidate(candidate: RTCIceCandidateInit) {
+		this.socket.emit('peer:sent:icecandidate', candidate);
 	}
 }
 
