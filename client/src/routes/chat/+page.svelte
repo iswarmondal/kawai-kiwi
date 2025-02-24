@@ -17,6 +17,7 @@
 	let findingPeerTimeout = $state<NodeJS.Timeout | null>(null);
 
 	let pendingIceCandidates = $state<RTCIceCandidate[]>([]);
+	let userIdToken = $state("")
 
 	$effect(() => {
 		if (browser && !userStore.isLoading() && !userStore.getUser()) {
@@ -173,14 +174,24 @@
 
 	const handleVideoChatStart = async () => {
 		try {
-			localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-			if (localVideo) {
-				localVideo.srcObject = localStream;
+			userIdToken = await userStore.getUser()?.getIdToken() ?? ""
+			if (userIdToken === "") {
+				throw new Error("User not found");
 			}
-			socketStore.findPeer();
+			await socketStore.connect(userIdToken)
+			try {
+				localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+				if (localVideo) {
+					localVideo.srcObject = localStream;
+				}
+				socketStore.findPeer();
+			} catch (error) {
+				console.error('Error getting user media:', error);
+				alert('Error getting user media, please try again');
+			}
 		} catch (error) {
-			console.error('Error getting user media:', error);
-			alert('Error getting user media, please try again');
+			alert("Error starting chat, make sure you sign in")
+			goto('/login');
 		}
 	};
 

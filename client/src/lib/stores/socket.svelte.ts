@@ -8,12 +8,21 @@ class SocketStore {
 		return this.socket;
 	}
 
-	connect() {
-		this.disconnect();
-		if (!PUBLIC_SOCKET_SERVER_URL || PUBLIC_SOCKET_SERVER_URL === null) {
-			throw Error('Socket server url not found in env');
+	async connect(idToken: string) {
+		try {
+			this.disconnect();
+			if (!PUBLIC_SOCKET_SERVER_URL || PUBLIC_SOCKET_SERVER_URL === null) {
+				throw Error('Socket server url not found in env');
+			}
+			this.socket = io(PUBLIC_SOCKET_SERVER_URL, {
+				auth: {
+					token: idToken
+				}
+			});
+		} catch (e) {
+			console.log(e);
+			throw new Error('Socket connection error');
 		}
-		this.socket = io(PUBLIC_SOCKET_SERVER_URL);
 	}
 
 	disconnect() {

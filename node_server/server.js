@@ -1,6 +1,16 @@
 const { createServer } = require("http");
 const { Server } = require("socket.io");
 const { instrument } = require("@socket.io/admin-ui");
+const admin = require("firebase-admin");
+
+const dotenv = require("dotenv");
+dotenv.config();
+
+const firebaseAdminCred = JSON.parse(process.env.SERVICE_ACCOUNT_CREDENTIAL);
+
+admin.initializeApp({
+  credential: admin.credential.cert(firebaseAdminCred),
+});
 
 const httpServer = createServer((req, res) => {
   // Add health check endpoint
@@ -12,7 +22,6 @@ const httpServer = createServer((req, res) => {
 
   // Add default page handler
   if (req.method === "GET" && req.url === "/") {
-    console.log("request on '/'");
     res.writeHead(200, { "Content-Type": "text/html" });
     res.end(`
       <html>
@@ -32,12 +41,32 @@ const httpServer = createServer((req, res) => {
 
 const io = new Server(httpServer, {
   cors: {
-    origin: "*",
-    credentials: false,
+    origin: ["http://localhost:5173", "https://admin.socket.io"],
+    credentials: true,
+    methods: ["GET", "POST"],
   },
 });
 
 const users = {};
+
+// Add middleware to verify Firebase token before allowing connection
+io.use(async (socket, next) => {
+  const token = socket.handshake.auth.token;
+  if (!token) {
+    console.log("Token not found");
+    return next(new Error("Authentication token missing"));
+  }
+
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    socket.user = decodedToken;
+    console.log("User authenticated");
+    next();
+  } catch (error) {
+    console.error("Authentication error:", error);
+    return next(new Error("Authentication failed"));
+  }
+});
 
 io.on("connection", (socket) => {
   const callerID = socket.id;
