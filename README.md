@@ -3,6 +3,8 @@
 
 [![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen)](https://kawaikiwi.iswar.me/)
 
+<img width="1552" alt="Screenshot 2025-02-25 at 1 08 34 AM" src="https://github.com/user-attachments/assets/f1f2291f-1a4d-4b87-baa8-f55bee6e3ae8" />
+
 ## What's This? 🤔
 
 Remember Omegle? Yeah, that random video chat thing. Well, this is like that, but with a cool retro CRT monitor vibe because why not? Plus, I make sure you're a real person by asking you to sign in with Google first.
