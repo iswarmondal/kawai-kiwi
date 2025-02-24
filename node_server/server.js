@@ -5,10 +5,8 @@ const { instrument } = require("@socket.io/admin-ui");
 const httpServer = createServer((req, res) => {
   // Add health check endpoint
   if (req.method === "GET" && req.url === "/health") {
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(
-      JSON.stringify({ status: "healthy", timestamp: new Date().toISOString() })
-    );
+    res.writeHead(200, { "Content-Type": "text/plain" });
+    res.end("ok");
     return;
   }
 });
