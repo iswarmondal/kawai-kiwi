@@ -41,7 +41,7 @@ const httpServer = createServer((req, res) => {
 
 const io = new Server(httpServer, {
   cors: {
-    origin: ["http://localhost:5173", "https://admin.socket.io"],
+    origin: ["https://admin.socket.io", "https://kawaikiwi.iswar.me"],
     credentials: true,
     methods: ["GET", "POST"],
   },
