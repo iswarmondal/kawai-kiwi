@@ -9,6 +9,25 @@ const httpServer = createServer((req, res) => {
     res.end("ok");
     return;
   }
+
+  // Add default page handler
+  if (req.method === "GET" && req.url === "/") {
+    console.log("request on '/'")
+    res.writeHead(200, { "Content-Type": "text/html" });
+    res.end(`
+      <html>
+        <head>
+          <title>WebRTC Server</title>
+        </head>
+        <body>
+          <h1>WebRTC Server</h1>
+          <p>Server is running successfully.</p>
+          <p>Status: <a href="/health">Check health</a></p>
+        </body>
+      </html>
+    `);
+    return;
+  }
 });
 
 const io = new Server(httpServer, {
