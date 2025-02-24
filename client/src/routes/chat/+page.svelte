@@ -246,19 +246,19 @@
 
 		<!-- Chat interface will go here -->
 		<div
-			class="card bg-base-100/10 border-neon-cyan/20 flex min-h-[85vh] flex-col items-center justify-between border-2 p-2 backdrop-blur-sm md:p-8"
+			class="card overflow-scroll bg-base-100/10 border-neon-cyan/20 flex min-h-[63vh] flex-col items-center justify-between border-2 backdrop-blur-sm md:p-2"
 		>
 			<div
-				class="flex h-[65vh] w-full flex-col items-center justify-center gap-4 md:flex-row"
+				class="flex h-[65vh] w-full flex-col items-center justify-center gap-0 md:gap-0.5 md:flex-row"
 				class:hidden={!localStream}
 			>
-				<div class="relative h-[300px] w-full md:h-[400px] md:w-1/2">
+				<div class="relative h-[300px] md:h-full md:w-1/2">
 					<video
 						id="remoteVideo"
 						bind:this={remoteVideo}
 						autoplay
 						playsInline
-						class="border-neon-cyan h-full w-full rounded-xl border-2 transition-all duration-300"
+						class="h-full w-full transition-all duration-300"
 					>
 						<track kind="captions" />
 					</video>
@@ -277,13 +277,13 @@
 					autoplay
 					playsinline
 					muted
-					class="border-neon-cyan h-[300px] w-full rounded-xl border-2 bg-cover bg-center transition-all duration-300 md:h-[400px] md:w-1/2"
+					class="h-[300px] bg-cover bg-center transition-all duration-300 md:h-full md:w-1/2"
 				>
 					<track kind="captions" label="Video Chat Captions" src="" default />
 				</video>
 			</div>
 
-			<div class="mt-8 flex justify-center gap-4">
+			<div class="mt-4 sm:mt-20 sm:mb-1 md:mt-4 flex flex-col md:flex-row justify-center gap-4">
 				<button
 					class="btn btn-lg bg-neon-cyan/20 border-neon-cyan hover:bg-neon-pink/20 hover:border-neon-pink text-neon-cyan hover:text-neon-pink hover-glow border-2 px-8 py-2 font-mono text-xl md:px-12 md:py-4"
 					onclick={() => {
@@ -312,7 +312,9 @@
 						{#if !localStream}
 							START_VIDEO_CHAT [▶]
 						{:else if remoteStream}
-							END_VIDEO_CHAT [⏹]
+							<span class="text-red-500">
+								END_VIDEO_CHAT [⏹]
+							</span>
 						{:else}
 							CANCEL_SEARCH [⏹]
 						{/if}
