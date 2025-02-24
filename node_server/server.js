@@ -12,7 +12,7 @@ const httpServer = createServer((req, res) => {
 
   // Add default page handler
   if (req.method === "GET" && req.url === "/") {
-    console.log("request on '/'")
+    console.log("request on '/'");
     res.writeHead(200, { "Content-Type": "text/html" });
     res.end(`
       <html>
@@ -32,8 +32,8 @@ const httpServer = createServer((req, res) => {
 
 const io = new Server(httpServer, {
   cors: {
-    origin: ["http://localhost:5173", "https://admin.socket.io"],
-    credentials: true,
+    origin: "*",
+    credentials: false,
   },
 });
 
