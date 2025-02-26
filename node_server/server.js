@@ -152,7 +152,7 @@ io.on("connection", (socket) => {
 // Initialize Socket.IO Admin UI
 instrument(io, {
   auth: {
-    type: process.env.SOCKET_ADMIN_AUTH_TYPE,
+    type: process.env.SOCKET_ADMIN_TYPE,
     username: process.env.SOCKET_ADMIN_USERNAME,
     password: process.env.SOCKET_ADMIN_PASSWORD,
   },
