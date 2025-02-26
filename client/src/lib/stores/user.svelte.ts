@@ -23,6 +23,10 @@ class UserStore {
 	getUser() {
 		return this.currentUser;
 	}
+
+	getIdToken() {
+		return this.currentUser?.getIdToken();
+	}
 }
 
 export const userStore = new UserStore();

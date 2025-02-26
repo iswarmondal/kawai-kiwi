@@ -4,7 +4,7 @@
 	import { goto } from '$app/navigation';
 	import { socketStore } from '$lib/stores/socket.svelte';
 	import { rtcConfig } from '$lib/stores/RTC.config.svelte';
-
+	
 	const socket = socketStore.getSocket();
 	let localStream = $state<MediaStream | null>(null);
 	let localVideo = $state<HTMLVideoElement | null>(null);
@@ -83,93 +83,102 @@
 		socketStore.findPeer();
 	};
 
-	socket.on('peer:accepted', () => {
-		if (findingPeerTimeout) {
-			clearTimeout(findingPeerTimeout);
-		}
+	const setupSocketListeners = async () => {
+		const socket = socketStore.getSocket();
+		if (!socket) return;
 
-		if (!localStream) {
-			alert('Error: No local stream found');
-			return;
-		}
-
-		peerConnection = rtcConfig.setupPeerConnection(
-			localStream,
-			handleTrack,
-			handleIceCandidate,
-			handleDisconnect
-		);
-	});
-
-	socket.on('peer:found', async () => {
-		if (findingPeerTimeout) {
-			clearTimeout(findingPeerTimeout);
-		}
-
-		if (!localStream) {
-			alert('Error: No local stream found');
-			return;
-		}
-
-		peerConnection = rtcConfig.setupPeerConnection(
-			localStream,
-			handleTrack,
-			handleIceCandidate,
-			handleDisconnect
-		);
-
-		const offer = await rtcConfig.createOffer();
-		socketStore.sendConnectionOffer(offer);
-	});
-
-	socket.on('peer:sent:icecandidate', (candidate) => {
-		if (!rtcConfig.getPeerConnection()) {
-			throw new Error('Error: No peer connection found');
-		}
-		if (candidate.candidate) {
-			const iceCandidate = new RTCIceCandidate(candidate);
-			if (rtcConfig.getPeerConnection().remoteDescription) {
-				console.log('adding ice candidate', candidate);
-				rtcConfig.getPeerConnection().addIceCandidate(iceCandidate);
-			} else {
-				console.log('queuing ice candidate', candidate);
-				pendingIceCandidates.push(iceCandidate);
+		socket.on('peer:accepted', () => {
+			if (findingPeerTimeout) {
+				clearTimeout(findingPeerTimeout);
 			}
-		}
-	});
 
-	socket.on('peer:call', async (offer) => {
-		await rtcConfig.answerOffer(offer);
-		const answer = await rtcConfig.createAnswer();
-		socketStore.sendConnectionAnswer(answer);
-	});
-
-	socket.on('peer:answer', async (answer) => {
-		if (!rtcConfig.getPeerConnection()) {
-			throw new Error('Error: No peer connection found');
-		}
-
-		try {
-			await rtcConfig.getPeerConnection().setRemoteDescription(new RTCSessionDescription(answer));
-
-			// Add any pending ICE candidates
-			for (const candidate of pendingIceCandidates) {
-				await rtcConfig.getPeerConnection().addIceCandidate(candidate);
+			if (!localStream) {
+				alert('Error: No local stream found');
+				return;
 			}
-			pendingIceCandidates = [];
-		} catch (error) {
-			console.error('Error setting remote description:', error);
-		}
-	});
 
-	socket.on('peer:alone', () => {
-		if (findingPeerTimeout) {
-			clearTimeout(findingPeerTimeout);
-		}
+			peerConnection = rtcConfig.setupPeerConnection(
+				localStream,
+				handleTrack,
+				handleIceCandidate,
+				handleDisconnect
+			);
+		});
 
-		findingPeerTimeout = setTimeout(() => {
-			socketStore.findPeer();
-		}, 7000);
+		socket.on('peer:found', async () => {
+			if (findingPeerTimeout) {
+				clearTimeout(findingPeerTimeout);
+			}
+
+			if (!localStream) {
+				alert('Error: No local stream found');
+				return;
+			}
+
+			peerConnection = rtcConfig.setupPeerConnection(
+				localStream,
+				handleTrack,
+				handleIceCandidate,
+				handleDisconnect
+			);
+
+			const offer = await rtcConfig.createOffer();
+			socketStore.sendConnectionOffer(offer);
+		});
+
+		socket.on('peer:sent:icecandidate', (candidate) => {
+			if (!rtcConfig.getPeerConnection()) {
+				throw new Error('Error: No peer connection found');
+			}
+			if (candidate.candidate) {
+				const iceCandidate = new RTCIceCandidate(candidate);
+				if (rtcConfig.getPeerConnection().remoteDescription) {
+					console.log('adding ice candidate', candidate);
+					rtcConfig.getPeerConnection().addIceCandidate(iceCandidate);
+				} else {
+					console.log('queuing ice candidate', candidate);
+					pendingIceCandidates.push(iceCandidate);
+				}
+			}
+		});
+
+		socket.on('peer:call', async (offer) => {
+			await rtcConfig.answerOffer(offer);
+			const answer = await rtcConfig.createAnswer();
+			socketStore.sendConnectionAnswer(answer);
+		});
+
+		socket.on('peer:answer', async (answer) => {
+			if (!rtcConfig.getPeerConnection()) {
+				throw new Error('Error: No peer connection found');
+			}
+
+			try {
+				await rtcConfig.getPeerConnection().setRemoteDescription(new RTCSessionDescription(answer));
+
+				// Add any pending ICE candidates
+				for (const candidate of pendingIceCandidates) {
+					await rtcConfig.getPeerConnection().addIceCandidate(candidate);
+				}
+				pendingIceCandidates = [];
+			} catch (error) {
+				console.error('Error setting remote description:', error);
+			}
+		});
+
+		socket.on('peer:alone', () => {
+			if (findingPeerTimeout) {
+				clearTimeout(findingPeerTimeout);
+			}
+
+			findingPeerTimeout = setTimeout(() => {
+				socketStore.findPeer();
+			}, 7000);
+		});
+	};
+
+	$effect(() => {
+		setupSocketListeners();
 	});
 
 	const handleVideoChatStart = async () => {
@@ -178,7 +187,9 @@
 			if (userIdToken === "") {
 				throw new Error("User not found");
 			}
-			await socketStore.connect(userIdToken)
+			if (!socket || socket.connected === false || socket === null) {
+				await socketStore.connect()
+			}
 			try {
 				localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
 				if (localVideo) {

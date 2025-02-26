@@ -1,14 +1,15 @@
 import { io, Socket } from 'socket.io-client';
 import { PUBLIC_SOCKET_SERVER_URL } from '$env/static/public';
+import { userStore } from './user.svelte';
 
 class SocketStore {
-	private socket = $state<Socket>(io(PUBLIC_SOCKET_SERVER_URL));
+	private socket = $state<Socket | null>(null);
 
 	getSocket() {
 		return this.socket;
 	}
 
-	async connect(idToken: string) {
+	async connect() {
 		try {
 			this.disconnect();
 			if (!PUBLIC_SOCKET_SERVER_URL || PUBLIC_SOCKET_SERVER_URL === null) {
@@ -16,9 +17,10 @@ class SocketStore {
 			}
 			this.socket = io(PUBLIC_SOCKET_SERVER_URL, {
 				auth: {
-					token: idToken
+					token: await userStore.getIdToken()
 				}
 			});
+			return this.socket;
 		} catch (e) {
 			console.log(e);
 			throw new Error('Socket connection error');
@@ -26,28 +28,40 @@ class SocketStore {
 	}
 
 	disconnect() {
-		this.socket.disconnect();
+		if (this.socket) {
+			this.socket.disconnect();
+		}
 	}
 
 	findPeer() {
 		console.log('finding peer');
-		this.socket.emit('peer:find');
+		if (this.socket) {
+			this.socket.emit('peer:find');
+		}
 	}
 
 	sendMessage(message: string, data: RTCSessionDescriptionInit | RTCIceCandidateInit) {
-		this.socket.emit('message', message, data);
+		if (this.socket) {
+			this.socket.emit('message', message, data);
+		}
 	}
 
 	sendConnectionOffer(offer: RTCSessionDescriptionInit) {
-		this.socket.emit('peer:offer', offer);
+		if (this.socket) {
+			this.socket.emit('peer:offer', offer);
+		}
 	}
 
 	sendConnectionAnswer(answer: RTCSessionDescriptionInit) {
-		this.socket.emit('peer:answer', answer);
+		if (this.socket) {
+			this.socket.emit('peer:answer', answer);
+		}
 	}
 
 	sendIceCandidate(candidate: RTCIceCandidateInit) {
-		this.socket.emit('peer:sent:icecandidate', candidate);
+		if (this.socket) {
+			this.socket.emit('peer:sent:icecandidate', candidate);
+		}
 	}
 }
 
