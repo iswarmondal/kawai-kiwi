@@ -41,7 +41,13 @@ const httpServer = createServer((req, res) => {
 
 const io = new Server(httpServer, {
   cors: {
-    origin: ["https://kawaiikiwi.online", "http://kawaiikiwi.online"],
+    origin: [
+      "https://kawaiikiwi.online",
+      "http://kawaiikiwi.online",
+      "http://www.kawaiikiwi.online",
+      "https://www.kawaiikiwi.online",
+      "https://admin.socket.io",
+    ],
     credentials: true,
     methods: ["GET", "POST"],
   },
@@ -144,15 +150,13 @@ io.on("connection", (socket) => {
 });
 
 // Initialize Socket.IO Admin UI
-// username: "admin"
-// password: "v0jzqf^!$DSTdpnWrz1P&a"
 instrument(io, {
   auth: {
-    type: "basic",
-    username: "admin",
-    password: "$2a$12$l9POcke0GwiWtcIuHWFPRO/hGiNuFRwCAcAg.H7wbRaiVK9jqL6By", // "v0jzqf^!$DSTdpnWrz1P&a" encrypted with bcrypt
+    type: process.env.SOCKET_ADMIN_AUTH_TYPE,
+    username: process.env.SOCKET_ADMIN_USERNAME,
+    password: process.env.SOCKET_ADMIN_PASSWORD,
   },
-  mode: "development",
+  mode: "production",
 });
 
 httpServer.listen(8080, "0.0.0.0", () => {
